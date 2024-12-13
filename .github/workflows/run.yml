@@ -1,0 +1,58 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install QEMU (ubuntu)
+      run: |
+        sudo apt-get update
+        sudo apt-get install musl-tools musl-dev build-essential 
+    - uses: actions/checkout@v4
+      with:
+         submodules: true
+    - name: Build
+      run: |
+        make
+    - name: Upload the artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: musl-demo
+        path: |
+          hello/hello
+
+  publish:
+    name: Upload release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: dev-drprasad/delete-tag-and-release@v1.1
+        with:
+          delete_release: true
+          tag_name: main
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: musl-demo
+          path: .
+
+      - name: Release to GitHub
+        uses: ncipollo/release-action@v1
+        with:
+          name: musl-demo
+          tag: main
+          commit: main
+          body: ${{ github.event.head_commit.message }}
+          artifacts: "hello"
+          prerelease: true
